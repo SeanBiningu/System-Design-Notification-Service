@@ -1,5 +1,14 @@
 # Getting Started with Create React App
 
+## Supabase setup
+
+1. Create a Supabase project and run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor.
+2. Copy `.env.example` to `.env`.
+3. Add your project URL and anon/publishable key from **Project Settings → API**. Never add a `service_role` key to this frontend.
+4. Restart `npm start` after changing `.env`.
+
+Without these variables, the dashboard stays in demo mode. The test-notification composer will write to the `notifications` table once Supabase is configured.
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
