@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
-import { createTestNotification } from './lib/supabase';
+import { createTestNotification, supabase } from './lib/supabase';
 
 const nav = ['Overview', 'Architecture', 'Delivery flow', 'Data model', 'Reliability'];
 const activity = [
   ['Password reset', 'Email', 'Delivered', '12:42:08'], ['Order #38429 shipped', 'Push', 'Delivered', '12:41:51'],
   ['Your verification code', 'SMS', 'Sent', '12:41:30'], ['Weekly product digest', 'Email', 'Queued', '12:40:12']
 ];
-function Overview({ onCompose, onNotify, onQueue, onActivity, onStatus }) {
+function Overview({ userName, onCompose, onNotify, onQueue, onActivity, onStatus }) {
   return <div className="dashboard">
-    <section className="dash-title"><div><p className="eyebrow">OPERATIONS OVERVIEW</p><h1>Good morning, <em>Sean.</em></h1><p>Here’s how your notification service is performing today.</p></div><div className="dash-actions"><button className="period" onClick={()=>onNotify('Showing today’s operating window')}>Today <span>⌄</span></button><button className="new-notification" onClick={onCompose}>＋ New notification</button></div></section>
+    <section className="dash-title"><div><p className="eyebrow">OPERATIONS OVERVIEW</p><h1>Hello, <em>{userName}.</em></h1><p>Here’s how your notification service is performing today.</p></div><div className="dash-actions"><button className="period" onClick={() => onNotify('Showing today’s operating window')}>Today <span>⌄</span></button><button className="new-notification" onClick={onCompose}>＋ New notification</button></div></section>
     <section className="health-banner"><div className="pulse"><span/><span/></div><div><b>All systems operational</b><p>All channels are delivering within their expected service level objectives.</p></div><button onClick={onStatus}>View status →</button></section>
     <section className="stats-grid">
       {[['Notifications sent','1,284,590','↑ 12.8%','metric-green'],['Delivery rate','99.72%','↑ 0.04%','metric-green'],['Avg. delivery time','1.8s','↓ 0.3s','metric-green'],['In retry queue','284','Requires attention','metric-amber']].map(([label,value,change,kind])=><article className="stat-card" key={label}><div className="stat-label">{label}<span className={`mini-dot ${kind}`}/></div><strong>{value}</strong><small className={kind}>{change}</small></article>)}
@@ -22,9 +22,55 @@ function Overview({ onCompose, onNotify, onQueue, onActivity, onStatus }) {
 }
 function DeliveryFlow({ onCompose, onNotify }) {
   const stages=[['01','REQUEST ACCEPTED','Notification API','12:42:08.014','✓'],['02','PREFERENCES','Consent & quiet hours','12:42:08.019','✓'],['03','ROUTED','P0 transactional lane','12:42:08.026','✓'],['04','DELIVERED','Email provider','12:42:09.842','✓']];
-  return <div className="dashboard"><section className="dash-title"><div><p className="eyebrow">DELIVERY FLOW</p><h1>Message <em>journey.</em></h1><p>Inspect every decision from acceptance to final delivery.</p></div><div className="dash-actions"><button className="period">Last 24 hours <span>⌄</span></button><button className="new-notification">＋ Send test</button></div></section><section className="flow-kpis"><article><span>ACCEPTED</span><b>1,284,590</b><small>100% of requests</small></article><i>→</i><article><span>FILTERED</span><b>24,320</b><small>1.89% preferences applied</small></article><i>→</i><article><span>DELIVERED</span><b>1,256,963</b><small>99.72% delivery rate</small></article></section><section className="journey-card"><div className="journey-head"><div><p className="eyebrow">TRACE # NT-9Q2M-4K7D</p><h2>Password reset request</h2><p>user_82f0a · Transactional · Email</p></div><span className="status delivered">DELIVERED</span></div><div className="journey-stages">{stages.map(([number,label,title,time,status],i)=><div className="journey-stage" key={label}><div className="stage-number">{number}</div><div className="stage-line">{i<3&&<i/>}</div><div><small>{label}</small><h3>{title}</h3><p>{time}</p></div><b className="check">{status}</b></div>)}</div></section><section className="flow-bottom"><article className="card"><p className="eyebrow">PRIORITY LANES</p><h2>Queue health</h2>{[['P0','Transactional','0.4s','9'],['P1','Standard','4.2s','71'],['P2','Bulk','38.8s','204']].map(([p,name,delay,count])=><div className="lane-row" key={p}><span className={`priority ${p.toLowerCase()}`}>{p}</span><b>{name}</b><small>{delay} avg wait</small><span>{count} pending</span></div>)}</article><article className="card"><p className="eyebrow">FILTERED TODAY</p><h2>Respecting choices</h2><div className="filter-list"><div><span>Quiet hours</span><b>14,892</b><i style={{width:'72%'}}/></div><div><span>Channel opt-out</span><b>7,316</b><i style={{width:'36%'}}/></div><div><span>Duplicate request</span><b>2,112</b><i style={{width:'12%'}}/></div></div></article></section></div>
+  return <div className="dashboard"><section className="dash-title"><div><p className="eyebrow">DELIVERY FLOW</p><h1>Message <em>journey.</em></h1><p>Inspect every decision from acceptance to final delivery.</p></div><div className="dash-actions"><button className="period" onClick={() => onNotify('Showing last 24 hours')}>Last 24 hours <span>⌄</span></button><button className="new-notification" onClick={onCompose}>＋ Send test</button></div></section><section className="flow-kpis"><article><span>ACCEPTED</span><b>1,284,590</b><small>100% of requests</small></article><i>→</i><article><span>FILTERED</span><b>24,320</b><small>1.89% preferences applied</small></article><i>→</i><article><span>DELIVERED</span><b>1,256,963</b><small>99.72% delivery rate</small></article></section><section className="journey-card"><div className="journey-head"><div><p className="eyebrow">TRACE # NT-9Q2M-4K7D</p><h2>Password reset request</h2><p>user_82f0a · Transactional · Email</p></div><span className="status delivered">DELIVERED</span></div><div className="journey-stages">{stages.map(([number,label,title,time,status],i)=><div className="journey-stage" key={label}><div className="stage-number">{number}</div><div className="stage-line">{i<3&&<i/>}</div><div><small>{label}</small><h3>{title}</h3><p>{time}</p></div><b className="check">{status}</b></div>)}</div></section><section className="flow-bottom"><article className="card"><p className="eyebrow">PRIORITY LANES</p><h2>Queue health</h2>{[['P0','Transactional','0.4s','9'],['P1','Standard','4.2s','71'],['P2','Bulk','38.8s','204']].map(([p,name,delay,count])=><div className="lane-row" key={p}><span className={`priority ${p.toLowerCase()}`}>{p}</span><b>{name}</b><small>{delay} avg wait</small><span>{count} pending</span></div>)}</article><article className="card"><p className="eyebrow">FILTERED TODAY</p><h2>Respecting choices</h2><div className="filter-list"><div><span>Quiet hours</span><b>14,892</b><i style={{width:'72%'}}/></div><div><span>Channel opt-out</span><b>7,316</b><i style={{width:'36%'}}/></div><div><span>Duplicate request</span><b>2,112</b><i style={{width:'12%'}}/></div></div></article></section></div>
 }
-function DataModel() { const fields=[['notification_id','UUID · PK','Globally unique event identity'],['idempotency_key','TEXT · UNIQUE','Caller-defined de-duplication scope'],['user_id','UUID · INDEX','Preference & recipient lookup'],['channel','ENUM','email | sms | push'],['status','ENUM','accepted → delivered / failed'],['scheduled_at','TIMESTAMPTZ','Quiet-hours aware delivery']]; return <div className="dashboard"><section className="dash-title"><div><p className="eyebrow">DATA MODEL</p><h1>Truth, made <em>durable.</em></h1><p>Every notification is an auditable, idempotent record.</p></div><div className="dash-actions"><button className="period">Production schema <span>⌄</span></button></div></section><section className="model-stats">{[['14.2M','notification records'],['3','regional shards'],['30 days','hot retention'],['7 years','event archive']].map(([a,b])=><div key={b}><b>{a}</b><span>{b}</span></div>)}</section><section className="model-layout"><article className="table-card"><div className="table-title"><div><span className="table-symbol">▦</span><div><p className="eyebrow">PRIMARY TABLE</p><h2>notifications</h2></div></div><span className="table-pill">PostgreSQL</span></div>{fields.map(([field,type,desc])=><div className="field-row" key={field}><div><b>{field}</b><span>{desc}</span></div><code>{type}</code></div>)}</article><article className="model-side"><div className="card"><p className="eyebrow">RELATIONSHIPS</p><h2>One record,<br/>complete context.</h2><div className="relationship"><span>notifications</span><i>1 : N</i><span>delivery_attempts</span><i>1 : N</i><span>status_events</span></div></div><div className="card"><p className="eyebrow">DATA SAFETY</p><div className="safety-item"><b>Idempotency constraint</b><span>user + key + 24h window</span></div><div className="safety-item"><b>PII envelope encryption</b><span>AES-256 at rest</span></div><div className="safety-item"><b>Event history</b><span>Append-only stream</span></div></div></article></section></div> }
+function Architecture({ onNotify }) {
+  return (
+    <div className="dashboard">
+      <section className="dash-title">
+        <div>
+          <p className="eyebrow">ARCHITECTURE</p>
+          <h1>System Architecture Overview</h1>
+          <p>Explore the high‑level components and data flows of the notification service.</p>
+        </div>
+        <div className="dash-actions">
+          <button className="period" onClick={() => onNotify('Viewing architecture')}>Architecture diagram</button>
+        </div>
+      </section>
+      {/* Placeholder for diagram – in a real app this would be an SVG or canvas */}
+      <div className="architecture-diagram" style={{height: "300px", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center"}}>
+        <span>Architecture diagram goes here</span>
+      </div>
+    </div>
+  );
+}
+
+// Updated DataModel to accept onNotify prop
+function DataModel({ onNotify }) { const fields=[['notification_id','UUID · PK','Globally unique event identity'],['idempotency_key','TEXT · UNIQUE','Caller-defined de-duplication scope'],['user_id','UUID · INDEX','Preference & recipient lookup'],['channel','ENUM','email | sms | push'],['status','ENUM','accepted → delivered / failed'],['scheduled_at','TIMESTAMPTZ','Quiet-hours aware delivery']]; return <div className="dashboard">
+      <section className="dash-title">
+        <div>
+          <p className="eyebrow">DATA MODEL</p>
+          <h1>Truth, made <em>durable.</em></h1>
+          <p>Every notification is an auditable, idempotent record.</p>
+        </div>
+        <div className="dash-actions">
+          <button className="period" onClick={() => onNotify('Showing production schema')}>Production schema <span>⌄</span></button>
+        </div>
+      </section>
+      <section className="model-stats">{[['14.2M','notification records'],['3','regional shards'],['30 days','hot retention'],['7 years','event archive']].map(([a,b])=>(<div key={b}><b>{a}</b><span>{b}</span></div>))}</section>
+      <section className="model-layout">
+        <article className="table-card">
+          <div className="table-title"><div><span className="table-symbol">▦</span><div><p className="eyebrow">PRIMARY TABLE</p><h2>notifications</h2></div></div></div>
+          <span className="table-pill">PostgreSQL</span>
+          {fields.map(([field,type,desc])=>(<div className="field-row" key={field}><div><b>{field}</b><span>{desc}</span></div><code>{type}</code></div>))}
+        </article>
+        <article className="model-side">
+          <div className="card"><p className="eyebrow">RELATIONSHIPS</p><h2>One record,<br/>complete context.</h2><div className="relationship"><span>notifications</span><i>1 : N</i><span>delivery_attempts</span><i>1 : N</i><span>status_events</span></div></div>
+          <div className="card"><p className="eyebrow">DATA SAFETY</p><div className="safety-item"><b>Idempotency constraint</b><span>user + key + 24h window</span></div><div className="safety-item"><b>PII envelope encryption</b><span>AES-256 at rest</span></div><div className="safety-item"><b>Event history</b><span>Append-only stream</span></div></div>
+        </article>
+      </section>
+    </div>;
+}
 function Reliability() { return <div className="dashboard"><section className="dash-title"><div><p className="eyebrow">RELIABILITY</p><h1>Prepared for <em>failure.</em></h1><p>Reliability controls that keep every important message moving.</p></div><div className="dash-actions"><button className="period">Last 30 days <span>⌄</span></button></div></section><section className="slo-grid">{[['99.99%','Availability SLO','✓ On target'],['1.8s','P95 delivery time','✓ Under 5s target'],['0','Lost notifications','✓ Guaranteed'],['99.72%','Provider success rate','! Watch SMS']].map(([value,label,state])=><article key={label}><b>{value}</b><span>{label}</span><small>{state}</small></article>)}</section><section className="reliability-layout"><article className="card controls"><p className="eyebrow">RESILIENCE CONTROLS</p><h2>Every failure has a path.</h2>{[['01','Transactional outbox','Safely replays events that were committed but not published.','healthy'],['02','Idempotent workers','Duplicate queue deliveries result in a single provider request.','healthy'],['03','Circuit breakers','Isolates failing providers before they cascade.','healthy'],['04','Provider failover','Routes to a secondary vendor after timeout or 5xx.','watch']].map(([n,title,text,state])=><div className="control-row" key={n}><span>{n}</span><div><b>{title}</b><p>{text}</p></div><i className={state}/></div>)}</article><article className="incident-card"><p className="eyebrow">RECOVERY READINESS</p><h2>4m 12s</h2><span>last failover recovery</span><div className="recovery-bars">{[50,65,42,72,56,93,68,54,61,77,43,70].map((h,i)=><i key={i} style={{height:`${h}%`}}/>)}</div><div className="recovery-foot"><span>Target RTO: &lt; 5 min</span><b>Met</b></div></article></section><section className="provider-card card"><div><p className="eyebrow">PROVIDER STATUS</p><h2>Active delivery partners</h2></div>{[['Email','Mailgrid','99.98%','normal'],['SMS','Telco Connect','98.91%','warning'],['Push','Cloud Notify','99.99%','normal']].map(([channel,vendor,rate,state])=><div className="provider-row" key={channel}><span className={`provider-light ${state}`}/><b>{channel}</b><span>{vendor}</span><strong>{rate}</strong><small>success rate</small></div>)}</section></div> }
 function ExportBrief({ close }) {
   const [scope, setScope] = useState('Full system design');
@@ -44,13 +90,44 @@ function DetailPanel({ type, close }) {
 }
 function Composer({ close, onNotify }) {
   const [channel, setChannel] = useState('Email');
+  const [trafficClass, setTrafficClass] = useState('transactional');
   const [message, setMessage] = useState('Your verification code is 482913.');
   const [recipient, setRecipient] = useState('test.user@example.com');
   const [sending, setSending] = useState(false);
-  const send = async () => { setSending(true); const { error } = await createTestNotification({ channel: channel.toLowerCase(), recipient, body: message }); setSending(false); if (error && !error.message.includes('not configured')) { onNotify(`Unable to queue test: ${error.message}`); return; } onNotify(error ? `Demo ${channel.toLowerCase()} queued — connect Supabase to persist it` : `Test ${channel.toLowerCase()} saved to Supabase and queued`); close(); };
-  return <div className="export-backdrop" role="dialog" aria-modal="true"><div className="composer-modal"><button className="close-export" onClick={close}>×</button><div className="export-title"><p className="eyebrow">TEST NOTIFICATION</p><h2>Create a notification</h2><p>Send a test message through the selected delivery channel.</p></div><div className="composer-fields"><label>CHANNEL<select value={channel} onChange={e=>setChannel(e.target.value)}><option>Email</option><option>SMS</option><option>Push</option></select></label><label>RECIPIENT<input value={recipient} onChange={e=>setRecipient(e.target.value)}/></label><label>MESSAGE<textarea value={message} onChange={e=>setMessage(e.target.value)} /></label></div><div className="export-footer"><button onClick={close} className="cancel-export">Cancel</button><button onClick={send} className="download-export" disabled={sending}>{sending ? 'Queueing…' : 'Send test →'}</button></div></div></div>
+  const send = async () => { setSending(true); const { error } = await createTestNotification({ channel: channel.toLowerCase(), recipient, body: message, trafficClass }); setSending(false); if (error && !error.message.includes('not configured')) { onNotify(`Unable to queue test: ${error.message}`); return; } onNotify(error ? `Demo ${channel.toLowerCase()} queued — connect Supabase to persist it` : `Test ${channel.toLowerCase()} saved to Supabase and queued`); close(); };
+  return <div className="export-backdrop" role="dialog" aria-modal="true"><div className="composer-modal"><button className="close-export" onClick={close}>×</button><div className="export-title"><p className="eyebrow">TEST NOTIFICATION</p><h2>Create a notification</h2><p>Send a test message through the selected delivery channel.</p></div><div className="composer-fields"><label>TRAFFIC CLASS<select value={trafficClass} onChange={e=>setTrafficClass(e.target.value)}><option value="transactional">Transactional — high priority</option><option value="bulk">Bulk — lower priority</option></select></label><label>CHANNEL<select value={channel} onChange={e=>setChannel(e.target.value)}><option>Email</option><option>SMS</option><option>Push</option></select></label><label>RECIPIENT<input value={recipient} onChange={e=>setRecipient(e.target.value)}/></label><label>MESSAGE<textarea value={message} onChange={e=>setMessage(e.target.value)} /></label></div><div className="export-footer"><button onClick={close} className="cancel-export">Cancel</button><button onClick={send} className="download-export" disabled={sending}>{sending ? 'Queueing…' : 'Send test →'}</button></div></div></div>
+}
+function displayName(user) {
+  return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'there';
+}
+function LoginPage({ onLogin }) {
+  const [mode, setMode] = useState('login');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async event => {
+    event.preventDefault();
+    setBusy(true); setMessage('');
+    if (!supabase) {
+      const localUser = { email, user_metadata: { full_name: name || email.split('@')[0] } };
+      localStorage.setItem('notify-demo-user', JSON.stringify(localUser));
+      onLogin(localUser); setBusy(false); return;
+    }
+    const result = mode === 'login'
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
+    setBusy(false);
+    if (result.error) { setMessage(result.error.message); return; }
+    if (mode === 'signup' && !result.data.session) { setMessage('Check your email to confirm your account, then log in.'); return; }
+    if (result.data.user) onLogin(result.data.user);
+  };
+  return <main className="auth-page"><section className="auth-card"><div className="auth-brand"><div className="brand-mark">N</div><span>notify<span className="brand-dot">.</span></span></div><p className="eyebrow">NOTIFICATION PLATFORM</p><h1>{mode === 'login' ? 'Welcome back.' : 'Create your account.'}</h1><p className="auth-copy">{mode === 'login' ? 'Sign in to manage your notification service.' : 'Set up your workspace access in a few seconds.'}</p><form onSubmit={submit}><label>{mode === 'signup' ? 'NAME' : 'EMAIL'}{mode === 'signup' && <input required value={name} onChange={event => setName(event.target.value)} placeholder="Your name" autoComplete="name"/>}{mode === 'login' && <input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email"/>}</label>{mode === 'signup' && <label>EMAIL<input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email"/></label>}<label>PASSWORD<input required type="password" minLength="6" value={password} onChange={event => setPassword(event.target.value)} placeholder="At least 6 characters" autoComplete={mode === 'login' ? 'current-password' : 'new-password'}/></label>{message && <p className="auth-message" role="alert">{message}</p>}<button className="auth-submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in →' : 'Create account →'}</button></form><button className="auth-switch" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setMessage(''); }}>{mode === 'login' ? 'New here? Create an account' : 'Already have an account? Log in'}</button>{!supabase && <p className="auth-demo">Demo mode: any valid email and password will work.</p>}</section></main>;
 }
 function App() {
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(!supabase);
   const [active, setActive] = useState('Overview');
   const [lane, setLane] = useState('Transactional');
   const [selected, setSelected] = useState('orchestrator');
@@ -58,11 +135,20 @@ function App() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [detailPanel, setDetailPanel] = useState('');
   const [toast, setToast] = useState('');
+  useEffect(() => {
+    if (!supabase) { const saved = localStorage.getItem('notify-demo-user'); if (saved) setUser(JSON.parse(saved)); return; }
+    supabase.auth.getSession().then(({ data: { session } }) => { setUser(session?.user || null); setAuthReady(true); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user || null));
+    return () => subscription.unsubscribe();
+  }, []);
   const notify = message => { setToast(message); window.setTimeout(()=>setToast(''), 3200); };
   const details = { gateway:['Notification API','Authenticates internal services','Creates a stable idempotency key per request.'], orchestrator:['Orchestrator','Evaluates preferences, templates, and routing','Writes an outbox event in the same transaction as the notification record.'], queue:['Priority queues','Isolates real-time from bulk traffic','Retries are scheduled with exponential backoff and jitter.'], workers:['Channel workers','Provider adapters for Email, SMS & Push','Each adapter is independently rate-limited and failover-aware.'] };
+  const logout = async () => { if (supabase) await supabase.auth.signOut(); else localStorage.removeItem('notify-demo-user'); setUser(null); };
+  if (!authReady) return <main className="auth-page"><p className="auth-loading">Loading your workspace…</p></main>;
+  if (!user) return <LoginPage onLogin={setUser}/>;
   return <div className="app-shell">
     <aside className="sidebar"><div className="brand"><div className="brand-mark">N</div><span>notify<span className="brand-dot">.</span></span></div><p className="eyebrow sidebar-label">SYSTEM DESIGN</p><nav>{nav.map(item=><button key={item} onClick={()=>setActive(item)} className={active===item?'nav-item active':'nav-item'}><span>{item==='Overview'?'⌘':item==='Architecture'?'◇':item==='Delivery flow'?'↗':item==='Data model'?'▦':'◌'}</span>{item}</button>)}</nav><div className="sidebar-bottom"><div className="availability"><span className="status-dot"/>All systems operational</div><p>v1.0 · August 2026</p></div></aside>
-    <main><header className="topbar"><div className="crumbs">Platform <span>/</span> System designs <span>/</span> <b>Notification service</b></div><button className="export" onClick={()=>setExportOpen(true)}>↧ &nbsp; Export brief</button><div className="avatar">SK</div></header>{active === 'Overview' ? <Overview onCompose={()=>setComposerOpen(true)} onNotify={notify} onQueue={()=>setDetailPanel('queue')} onActivity={()=>setDetailPanel('activity')} onStatus={()=>setDetailPanel('status')}/> : active === 'Delivery flow' ? <DeliveryFlow onCompose={()=>setComposerOpen(true)} onNotify={notify}/> : active === 'Data model' ? <DataModel/> : active === 'Reliability' ? <Reliability/> : <div className="content">
+    <main><header className="topbar"><div className="crumbs">Platform <span>/</span> System designs <span>/</span> <b>Notification service</b></div><button className="export" onClick={()=>setExportOpen(true)}>↧ &nbsp; Export brief</button><button className="user-menu" onClick={logout} title="Log out"><span className="avatar">{displayName(user).slice(0, 2).toUpperCase()}</span><span>Log out</span></button></header>{active === 'Overview' ? <Overview userName={displayName(user)} onCompose={() => setComposerOpen(true)} onNotify={notify} onQueue={() => setDetailPanel('queue')} onActivity={() => setDetailPanel('activity')} onStatus={() => setDetailPanel('status')} /> : active === 'Delivery flow' ? <DeliveryFlow onCompose={() => setComposerOpen(true)} onNotify={notify} /> : active === 'Data model' ? <DataModel onNotify={notify} /> : active === 'Reliability' ? <Reliability /> : active === 'Architecture' ? <Architecture onNotify={notify} /> : <div className="content">
       <section className="hero"><div><p className="eyebrow">SYSTEM DESIGN · 01</p><h1>Notification<br/><em>Service.</em></h1><p className="hero-copy">A dependable communications layer for every customer moment — from password resets to campaigns at planetary scale.</p></div><div className="hero-card"><div className="card-head"><span>Daily throughput</span><span className="trend">↑ 99.99% target</span></div><div className="metric">10M<span>/day</span></div><div className="bars">{[25,39,31,62,46,78,59,92,72,88,68,48].map((n,i)=><i key={i} style={{height:`${n}%`}}/>)}</div><div className="card-foot"><span>Avg. 116/sec</span><span>Peak 15K/sec</span></div></div></section>
       <section className="principles"><div><p className="eyebrow">DESIGN PRINCIPLES</p><h2>Built for the message<br/>that can’t be missed.</h2></div><div className="principle-grid">{[['◎','Once, exactly','At-least-once processing, made safe by idempotency keys at every boundary.'],['↯','Urgency wins','Dedicated priority lanes keep transactional messages near real-time.'],['♧','Choice first','Preference checks and quiet hours are evaluated before each send.']].map(([icon,title,text])=><article key={title}><span className="icon">{icon}</span><h3>{title}</h3><p>{text}</p></article>)}</div></section>
       <section className="architecture"><div className="section-row"><div><p className="eyebrow">THE SYSTEM</p><h2>One event. The right<br/>message. Every time.</h2></div><p className="section-copy">A durable event pipeline separates acceptance from delivery, protecting callers from provider latency while preserving a full audit trail.</p></div><div className="diagram-wrap"><div className="diagram-label">CLICK A COMPONENT TO INSPECT</div><div className="diagram"><button className={`node ${selected==='gateway'?'chosen':''}`} onClick={()=>setSelected('gateway')}><b>Internal services</b><span>Orders · Identity · Billing</span></button><div className="arrow">→</div>{[['orchestrator','✦','Notification API','Idempotency + outbox'],['orchestrator','◈','Orchestrator','Preference + routing'],['queue','≋','Priority queues','Txn · Standard · Bulk'],['workers','↗','Channel workers','Email · SMS · Push']].map(([id,icon,title,small],i)=><div className="node-unit" key={title}><button className={`node ${i<2?'primary':''} ${selected===id?'chosen':''}`} onClick={()=>setSelected(id)}><span className="node-icon">{icon}</span><b>{title}</b><small>{small}</small></button>{i<3&&<div className="arrow">→</div>}</div>)}</div><div className="inspect"><span className="inspect-dot"/><div><b>{details[selected][0]}</b><p>{details[selected][1]} <span>— {details[selected][2]}</span></p></div></div></div></section>

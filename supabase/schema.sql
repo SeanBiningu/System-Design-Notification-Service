@@ -1,16 +1,22 @@
 -- Run in the Supabase SQL editor. The browser uses only the anon/publishable key.
 create type public.notification_channel as enum ('email', 'sms', 'push');
 create type public.notification_status as enum ('accepted', 'queued', 'sent', 'delivered', 'failed', 'suppressed');
+create type public.notification_priority as enum ('transactional', 'bulk');
 
 create table public.notifications (
   id uuid primary key default gen_random_uuid(),
   idempotency_key text not null unique,
-  user_id uuid,
+  user_id uuid not null,
   recipient text not null,
   channel public.notification_channel not null,
   template_key text,
   body text,
   status public.notification_status not null default 'accepted',
+  priority public.notification_priority not null default 'transactional',
+  retry_count integer not null default 0 check (retry_count >= 0 and retry_count <= 5),
+  next_retry_at timestamptz,
+  last_error text,
+  provider text,
   scheduled_at timestamptz default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -18,6 +24,7 @@ create table public.notifications (
 
 create index notifications_created_at_idx on public.notifications (created_at desc);
 create index notifications_status_idx on public.notifications (status, created_at desc);
+create index notifications_priority_queue_idx on public.notifications (priority, status, next_retry_at, created_at);
 
 create table public.delivery_attempts (
   id uuid primary key default gen_random_uuid(),
@@ -34,8 +41,9 @@ create table public.delivery_attempts (
 alter table public.notifications enable row level security;
 alter table public.delivery_attempts enable row level security;
 
--- Demo policy. Replace with service-to-service JWT claims for production.
-create policy "demo authenticated notification access" on public.notifications
-  for all to authenticated using (true) with check (true);
-create policy "demo authenticated attempt access" on public.delivery_attempts
-  for all to authenticated using (true) with check (true);
+create policy "users manage their own notifications" on public.notifications
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "users read their own delivery attempts" on public.delivery_attempts
+  for select to authenticated using (
+    exists (select 1 from public.notifications n where n.id = notification_id and n.user_id = auth.uid())
+  );

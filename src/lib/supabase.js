@@ -21,9 +21,10 @@ export async function getNotificationSummary() {
 
 export async function createTestNotification(payload) {
   if (!supabase) return { error: new Error('Supabase is not configured.') };
-  return supabase.from('notifications').insert({
-    ...payload,
-    status: 'accepted',
-    idempotency_key: crypto.randomUUID(),
-  }).select().single();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: new Error('Please log in before sending a notification.') };
+  const { data, error } = await supabase.functions.invoke('send-notification', {
+    body: { ...payload, idempotencyKey: crypto.randomUUID() },
+  });
+  return { data, error };
 }

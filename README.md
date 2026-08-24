@@ -2,12 +2,31 @@
 
 ## Supabase setup
 
-1. Create a Supabase project and run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor.
+1. Create a Supabase project and run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor. For an existing installation, run [`supabase/migrations/20260824_reliability.sql`](supabase/migrations/20260824_reliability.sql) instead.
 2. Copy `.env.example` to `.env`.
 3. Add your project URL and anon/publishable key from **Project Settings → API**. Never add a `service_role` key to this frontend.
 4. Restart `npm start` after changing `.env`.
 
 Without these variables, the dashboard stays in demo mode. The test-notification composer will write to the `notifications` table once Supabase is configured.
+
+### Live delivery setup
+
+The real sender is a Supabase Edge Function. Install the Supabase CLI, authenticate, and deploy it:
+
+```bash
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase secrets set RESEND_API_KEY=... RESEND_FROM_EMAIL=verified@yourdomain.com
+# Optional email failover provider credentials
+supabase secrets set RESEND_BACKUP_API_KEY=... RESEND_BACKUP_FROM_EMAIL=verified@yourdomain.com
+supabase secrets set TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUMBER=+15551234567
+supabase secrets set FCM_PROJECT_ID=... FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+supabase functions deploy send-notification
+```
+
+Run the schema (or reliability migration) in Supabase **SQL Editor** before deploying the function. For live sends, the user must sign in through Supabase Auth; the Edge Function rejects unauthenticated requests. Enable the **Email** provider under **Authentication → Providers**. Provider secrets remain in Supabase and are never bundled into the browser application. Verify your sender domain in Resend, buy/configure a Twilio sender number, and create a Firebase service-account JSON with Firebase Cloud Messaging access.
+
+The sender records every attempt, retries failures at 0, 2, 4, and 8 seconds, and permanently fails after the fifth attempt. Email can fall back to a second Resend credential set. Transactional and bulk requests are stored with separate priorities; for sustained production volume, use a dedicated queue worker to consume transactional items before bulk items rather than invoking provider calls directly from the Edge Function.
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
