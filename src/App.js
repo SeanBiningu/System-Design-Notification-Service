@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./App.css";
-import { createTestNotification, supabase } from "./lib/supabase";
+import { createTestNotification } from "./lib/supabase";
 
 const navigationItems = [
   { label: "Overview", icon: "⌘" },
@@ -40,7 +40,7 @@ const architectureDetails = {
   ],
 };
 
-// The overview is the operational landing page shown after a user signs in.
+// The overview is the operational landing page.
 function Overview({
   userName,
   onCompose,
@@ -894,158 +894,7 @@ function Composer({ close, onNotify }) {
     </div>
   );
 }
-// Prefer a supplied profile name, with the email prefix as a safe fallback.
-function displayName(user) {
-  return (
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split("@")[0] ||
-    "there"
-  );
-}
-// This form uses Supabase in production and a local demo session when Supabase is absent.
-function LoginPage({ onLogin }) {
-  const [mode, setMode] = useState("login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const submit = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    setMessage("");
-    if (!supabase) {
-      const localUser = {
-        email,
-        user_metadata: { full_name: name || email.split("@")[0] },
-      };
-      localStorage.setItem("notify-demo-user", JSON.stringify(localUser));
-      onLogin(localUser);
-      setBusy(false);
-      return;
-    }
-    const result =
-      mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: name } },
-          });
-    setBusy(false);
-    if (result.error) {
-      setMessage(result.error.message);
-      return;
-    }
-    if (mode === "signup" && !result.data.session) {
-      setMessage("Check your email to confirm your account, then log in.");
-      return;
-    }
-    if (result.data.user) onLogin(result.data.user);
-  };
-  return (
-    <main className="auth-page">
-      <section className="auth-card">
-        <div className="auth-brand">
-          <div className="brand-mark">N</div>
-          <span>
-            notify<span className="brand-dot">.</span>
-          </span>
-        </div>
-        <p className="eyebrow">NOTIFICATION PLATFORM</p>
-        <h1>{mode === "login" ? "Welcome back." : "Create your account."}</h1>
-        <p className="auth-copy">
-          {mode === "login"
-            ? "Sign in to manage your notification service."
-            : "Set up your workspace access in a few seconds."}
-        </p>
-        <form onSubmit={submit}>
-          <label>
-            {mode === "signup" ? "NAME" : "EMAIL"}
-            {mode === "signup" && (
-              <input
-                required
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Your name"
-                autoComplete="name"
-              />
-            )}
-            {mode === "login" && (
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            )}
-          </label>
-          {mode === "signup" && (
-            <label>
-              EMAIL
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </label>
-          )}
-          <label>
-            PASSWORD
-            <input
-              required
-              type="password"
-              minLength="6"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="At least 6 characters"
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
-            />
-          </label>
-          {message && (
-            <p className="auth-message" role="alert">
-              {message}
-            </p>
-          )}
-          <button className="auth-submit" disabled={busy}>
-            {busy
-              ? "Please wait…"
-              : mode === "login"
-                ? "Log in →"
-                : "Create account →"}
-          </button>
-        </form>
-        <button
-          className="auth-switch"
-          onClick={() => {
-            setMode(mode === "login" ? "signup" : "login");
-            setMessage("");
-          }}
-        >
-          {mode === "login"
-            ? "New here? Create an account"
-            : "Already have an account? Log in"}
-        </button>
-        {!supabase && (
-          <p className="auth-demo">
-            Demo mode: any valid email and password will work.
-          </p>
-        )}
-      </section>
-    </main>
-  );
-}
 function App() {
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(!supabase);
   const [active, setActive] = useState("Overview");
   const [lane, setLane] = useState("Transactional");
   const [selected, setSelected] = useState("orchestrator");
@@ -1053,41 +902,10 @@ function App() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [detailPanel, setDetailPanel] = useState("");
   const [toast, setToast] = useState("");
-  // Restore an existing session on page load and keep React state in sync with login/logout events.
-  useEffect(() => {
-    if (!supabase) {
-      const saved = localStorage.getItem("notify-demo-user");
-      if (saved) setUser(JSON.parse(saved));
-      return;
-    }
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
-      setAuthReady(true);
-    });
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) =>
-      setUser(session?.user || null),
-    );
-    return () => subscription.unsubscribe();
-  }, []);
   const notify = (message) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 3200);
   };
-  // Clearing the remote session also triggers the subscription above; demo mode uses local storage.
-  const logout = async () => {
-    if (supabase) await supabase.auth.signOut();
-    else localStorage.removeItem("notify-demo-user");
-    setUser(null);
-  };
-  if (!authReady)
-    return (
-      <main className="auth-page">
-        <p className="auth-loading">Loading your workspace…</p>
-      </main>
-    );
-  if (!user) return <LoginPage onLogin={setUser} />;
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -1127,16 +945,10 @@ function App() {
           <button className="export" onClick={() => setExportOpen(true)}>
             ↧ &nbsp; Export brief
           </button>
-          <button className="user-menu" onClick={logout} title="Log out">
-            <span className="avatar">
-              {displayName(user).slice(0, 2).toUpperCase()}
-            </span>
-            <span>Log out</span>
-          </button>
         </header>
         {active === "Overview" ? (
           <Overview
-            userName={displayName(user)}
+            userName="there"
             onCompose={() => setComposerOpen(true)}
             onNotify={notify}
             onQueue={() => setDetailPanel("queue")}
