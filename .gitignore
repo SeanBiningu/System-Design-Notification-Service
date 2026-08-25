@@ -19,6 +19,9 @@
 .env.test.local
 .env.production.local
 
+# Supabase CLI connection metadata (machine- and project-specific)
+supabase/.temp/
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
